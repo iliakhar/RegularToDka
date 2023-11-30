@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from RegularExpression import *
 from NkaCondition import *
 
@@ -11,6 +13,7 @@ class NKA:
         self.reg = reg
         self.nka_e: list[NkaConditionE] = []
         self.nka: list[NkaCondition] = []
+        self.final_conds_ids: list[int] = []
         self.create_nka_e()
         self.create_nka()
 
@@ -19,8 +22,12 @@ class NKA:
         for symb in self.alphabet:
             text += str(symb) + ', '
         text = text[:-2] + '\n'
-        for ind, cond in enumerate(self.nka):
-            text += str(ind) + ') ' + cond.__str__() + '\n'
+        for ind, cond_id in enumerate(self.nka):
+            text += str(ind) + ') ' + cond_id.__str__() + '\n'
+        text += 'final conditions: '
+        for cond_id in self.final_conds_ids:
+            text += str(cond_id) + ', '
+        text = text[:-2] + '\n'
         return text
 
     def create_nka_e(self):
@@ -108,13 +115,16 @@ class NKA:
 
     def get_e_transitions_path_recurs(self, start_cond: NkaConditionE) -> dict[str: list[int]]:
         if len(start_cond.cond_transition['^']) == 0:
+            if start_cond.id == 1:  # final cond
+                start_cond.cond_transition['^'].append(-1)  # mark final cond
             return start_cond.cond_transition
-            # return [start_cond.id]
 
         e_path_final_dict: list[dict[str: list[int]]] = []
         for e_path_ind in start_cond.cond_transition['^']:
             if len(self.nka_e[e_path_ind].through_e_transition.keys()) == 0:
                 self.nka_e[e_path_ind].through_e_transition = self.get_e_transitions_path_recurs(self.nka_e[e_path_ind])
+                if -1 in self.nka_e[e_path_ind].through_e_transition['^']:
+                    self.final_conds_ids.append(e_path_ind)
             e_path_final_dict.append(self.nka_e[e_path_ind].through_e_transition)
 
         return merge_dicts(e_path_final_dict)
@@ -123,26 +133,29 @@ class NKA:
         for cond in self.nka_e:
             if len(cond.through_e_transition.keys()) == 0:
                 self.nka_e[cond.id].through_e_transition = self.get_e_transitions_path_recurs(self.nka_e[cond.id])
-                self.nka_e[cond.id].through_e_transition.pop('^', None)
-                keys_to_delete: list[str] = []
+                if -1 in self.nka_e[cond.id].through_e_transition['^']:
+                    self.final_conds_ids.append(cond.id)
+
                 for key, cond_ids in self.nka_e[cond.id].through_e_transition.items():
-                    # if len(cond_ids) == 0:
-                    #     keys_to_delete.append(key)
-                    # else:
                     for cond_id in cond_ids:
                         self.nka_e[cond_id].is_important_cond = True
-                # for key in keys_to_delete:
-                #     self.nka_e[cond.id].through_e_transition.pop(key, None)
+
+        print(self.final_conds_ids)
 
         self.nka_e[0].is_important_cond = True
+        tmp_final_conds: list[int] = []
         for cond in self.nka_e:
             if cond.is_important_cond:
+                if cond.id in self.final_conds_ids:
+                    tmp_final_conds.append(cond.id)
                 self.nka.append(NkaCondition(cond.id))
                 self.nka[-1].cond_transition = cond.through_e_transition
+                self.nka[-1].cond_transition.pop('^', None)
+        print(tmp_final_conds)
+        self.final_conds_ids = tmp_final_conds
 
         id_dict: dict[int, int] = {}
         for ind, cond in enumerate(self.nka):
-            # self.nka[ind].cond_transition.pop('^', None)
             id_dict[cond.id] = ind
 
         for cond_ind, cond in enumerate(self.nka):
@@ -150,6 +163,10 @@ class NKA:
             for key, vals in cond.cond_transition.items():
                 for ind, val in enumerate(vals):
                     self.nka[cond.id].cond_transition[key][ind] = id_dict[val]
+
+        for ind in range(len(self.final_conds_ids)):
+            self.final_conds_ids[ind] = id_dict[self.final_conds_ids[ind]]
+
 
 
     @staticmethod

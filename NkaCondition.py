@@ -13,10 +13,11 @@ class NkaCondition:
     def __str__(self):
         text: str = 'id: ' + str(self.id) + '\n'
         for key, val in self.cond_transition.items():
-            text += str(key) + ': '
-            for conds in val:
-                text += str(conds) + ', '
-            text = text[:-2] + '\n'
+            if len(val) != 0:
+                text += str(key) + ': '
+                for conds in val:
+                    text += str(conds) + ', '
+                text = text[:-2] + '\n'
         return text
 
 
