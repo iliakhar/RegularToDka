@@ -1,19 +1,27 @@
 from copy import deepcopy
 
-from RegularExpression import *
-from NkaCondition import *
+from model.RegularExpression import *
+from model.NkaCondition import *
 
 
 class NKA:
     last_cond_id = -1
 
-    def __init__(self, reg: RegularExpression, alphabet: list[str]):
-        self.alphabet: list[str] = alphabet
-        NkaCondition.alphabet = alphabet
-        self.reg = reg
+    def __init__(self):
+        self.alphabet: list[str] = []
+        self.reg: RegularExpression = None
         self.nka_transitions_with_e: list[NkaConditionE] = []
         self.nka_transitions: list[NkaCondition] = []
         self.final_conds_ids: list[int] = []
+
+    def init_nka(self, reg: RegularExpression, alphabet: list[str]):
+        NKA.last_cond_id = -1
+        self.alphabet = alphabet
+        NkaCondition.alphabet = alphabet
+        self.reg = reg
+        self.nka_transitions_with_e.clear()
+        self.nka_transitions.clear()
+        self.final_conds_ids.clear()
         self.create_nka_e()
         self.create_nka()
 

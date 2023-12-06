@@ -1,4 +1,4 @@
-from NKA import *
+from model.NKA import *
 import numpy as np
 import pandas as pd
 
@@ -6,18 +6,30 @@ import pandas as pd
 class DKA:
     last_cond_id = -1
 
-    def __init__(self, nka: NKA):
-        self.alphabet: list[str] = nka.alphabet
-        self.nka = nka
+    def __init__(self):
 
+        self.alphabet: list[str] = []
+        self.nka: NKA = None
         self.all_condition_tuples: list[tuple] = []
         self.all_condition_names: list[str] = []
 
-        self.dka_table: pd.DataFrame = pd.DataFrame(dict.fromkeys(self.alphabet, []))
-        self.empty_row = ['_']*len(self.alphabet)
-        self.final_conds:list[str] = []
+        self.dka_table: pd.DataFrame = None
+        self.empty_row: list[str] = []
+        self.final_conds: list[str] = []
+
+    def init_dka(self, nka: NKA):
+        DKA.last_cond_id = -1
+        self.alphabet = nka.alphabet
+        self.nka = nka
+        self.dka_table = pd.DataFrame(dict.fromkeys(self.alphabet, []))
+        self.empty_row = ['_'] * len(self.alphabet)
+        self.final_conds = []
+        self.all_condition_tuples = []
+        self.all_condition_names = []
+
         self.thompson_algorithm()
         self.find_final_conds()
+
 
     def __str__(self):
         text: str = self.dka_table.__str__() + '\n\n'
@@ -73,6 +85,23 @@ class DKA:
         for ind, conds in enumerate(self.all_condition_tuples):
             if len(set(conds) & set(self.nka.final_conds_ids)) != 0:
                 self.final_conds.append(self.all_condition_names[ind])
+
+    def check_chain(self, chain) -> tuple[str, list[tuple[str, str]]]:
+        chain_check_lst: list[tuple[str, str]] = []
+
+        current_cond = 'q0'
+        for ind, symb in enumerate(chain):
+            chain_check_lst.append((current_cond, chain[ind:]))
+            if symb not in self.alphabet:
+                return f'В цепочке присутствует посторонний символ: {symb}', chain_check_lst
+            next_cond: str = self.dka_table[symb].loc[current_cond]
+            if next_cond == '_':
+                return f'Не допустисый переход: {current_cond} {symb} → {next_cond}', chain_check_lst
+            current_cond = next_cond
+        chain_check_lst.append((current_cond, ''))
+        if chain_check_lst[-1][0] not in self.final_conds:
+            return f'Состояние {chain_check_lst[-1][0]} не соответствует финальному состоянию', chain_check_lst
+        return 'Проверка прошла успешно', chain_check_lst
 
     @staticmethod
     def get_unique_cond_name() -> str:
